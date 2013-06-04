@@ -13,41 +13,24 @@
   // MapMarker PUBLIC CLASS DEFINITION
   // ===============================
   var MapMarker = (function(){
-    function MapMarker (element, selectors) {
-      this.$element                 = null
-      this.selectors                = {}
-      this.selectors.latitude       = ''
-      this.selectors.longitude      = ''
-      this.selectors.description    = ''
-      this.selectors.name           = ''
-      this.selectors.link           = ''
-      this.selectors.image          = ''
-      this.selectors.geo            = ''
-      this.selectors.image          = ''
-      this.latitude                 = ''
-      this.longitude                = ''
-      this.name                     = ''
-      this.description              = ''
-      this.link                     = ''
-      this.image                    = ''
-      this.icon                     = ''
-
-      this.init( element, selectors )
-    }
-    MapMarker.prototype.init = function( element, selectors ) {
-      this.$element   = $(element)
-      this.selectors  = selectors
-      this.latitude     = this.$element.find(this.selectors.latitude).attr( 'content' )
-      this.longitude    = this.$element.find(this.selectors.longitude).attr( 'content' )
-      this.name         = this.$element.find(this.selectors.name).text()
-      this.description  = this.$element.find(this.selectors.description).text()
-      this.link         = this.$element.find(this.selectors.link).attr('href')
-      this.image        = this.$element.find(this.selectors.image).attr('src')
-      this.icon         = this.$element.find(this.selectors.geo ).attr('data-icon')
+    function MapMarker (obj) {
+      this.$element    = null
+      this.latitude    = ''
+      this.longitude   = ''
+      this.name        = ''
+      this.description = ''
+      this.link        = ''
+      this.image       = ''
+      this.icon        = ''
+      for ( var prop in obj ) {
+        if ( obj.hasOwnProperty( prop ) ) {
+          this[prop] = obj[prop];
+        }
+      }
     }
     MapMarker.prototype.populate = function( info_window ) {
-      var $content = $(info_window.content)
-      $content.find( 'h4 a' ).text( this.name)
+      var $content = $( info_window.content )
+      $content.find( 'h4 a' ).text( this.name )
       $content.find( 'img' ).attr( 'src', this.image )
       $content.find( 'p' ).text( this.description )
       $content.find( 'a' ).attr( 'href', this.link )
@@ -81,14 +64,20 @@
     this.$element = $(element)
     this.options  = this.getOptions(options)
     this.map      = this.$element.gmap().bind( 'init', $.proxy( this.setup, this ))
+    this.markers  = []
 
     if ( this.options.ajax ) {
+      var that = this
       $.ajax({
         url:            this.options.url
         , dataType:     this.options.dataType
-      }).done($.proxy( this.parseResponse, this ) )
+      }).done(function( data ){
+          that.parse( data )
+          that.addMarkers()
+        } )
     } else {
-      this.markers = $(this.options.marker)
+      this.parse( $( this.options.marker ) )
+      this.addMarkers()
     }
   }
 
@@ -102,41 +91,71 @@
     return options
   }
 
-  Map.prototype.setup = function() {
-    if ( !this.options.ajax ) {
-      var markers = this.parseHTMLMarkers( this.markers )
-      this.addMarkers( markers )
+  Map.prototype.parse = function( data ) {
+    var markers = []
+
+    if ( this.options.ajax ) {
+      switch ( this.options.ajax ) {
+        case 'html':
+          markers = this.parseHTML( $( data ).find( this.options.marker ) )
+          break;
+        case 'json':
+          markers = this.parseJSON( data )
+          break;
+      }
+    } else {
+      markers = this.parseHTML( data )
     }
+
+    this.$element.trigger( 'parse', data, markers, this )
+
+    this.markers = markers
   }
 
-  Map.prototype.parseHTMLMarkers = function( markers ) {
-    var that = this;
-    var result = [];
-    $.each(markers, function(){
-      var marker = new MapMarker($(this), {
-        latitude:       that.options.latitude
-        , longitude:      that.options.longitude
-        , description:    that.options.description
-        , name:           that.options.name
-        , link:           that.options.link
-        , image:          that.options.image
-        , icon:           that.options.icon
+  Map.prototype.parseHTML = function( data ) {
+    var that   = this
+    var result = []
+    $.each(data, function(){
+      var $this = $(this)
+      var marker = new MapMarker({
+        $element:         $this
+        , latitude:       $this.find(that.options.latitude).attr( 'content' )
+        , longitude:      $this.find(that.options.longitude).attr( 'content' )
+        , name:           $this.find(that.options.name).text()
+        , description:    $this.find(that.options.description).text()
+        , link:           $this.find(that.options.link).attr('href')
+        , image:          $this.find(that.options.image).attr('src')
+        , icon:           $this.find(that.options.geo ).attr('data-icon')
       })
       result.push(marker)
     })
     return result
   }
 
+  Map.prototype.parseJSON = function( data ) {
+    var that = this;
+    var result = [];
+    $.each( data, function(){
+      var marker = new MapMarker(this)
+      result.push(marker)
+    })
+    return result
+  }
+
   Map.prototype.addMarkers = function( markers ) {
-    $.each( markers, $.proxy( function( index, marker ){
-      this.addMarker( marker )
-    }, this ) )
+    if ( typeof markers === 'undefined' ) {
+      var markers = this.markers
+    }
+    var that = this
+    $.each( markers, function(){
+      that.addMarker( this )
+    })
   }
 
   Map.prototype.addMarker = function( marker ) {
     var that = this;
     this.map.gmap( 'addMarker', {
-      position  : new google.maps.LatLng(marker.latitude, marker.longitude)
+      position    : new google.maps.LatLng(marker.latitude, marker.longitude)
       , bounds    : true
       , icon      : marker.icon
     } ).click(function(){
@@ -144,10 +163,6 @@
           content: that.options.template
         }, this, $.proxy( marker.populate, marker ) )
       })
-  }
-
-  Map.prototype.parseResponse = function( data ) {
-    this.addMarkers( markers )
   }
 
   Map.prototype.getCurrentPosition = function(callback, geoPositionOptions) {
