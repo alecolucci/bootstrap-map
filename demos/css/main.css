@@ -1,0 +1,13 @@
+.map {
+    height: 400px;
+}
+
+/* this fixes problem with zoom bar and images in the maps*/
+.map label {
+    width: auto;
+    display: inline;
+}
+
+.map img {
+    max-width: none;
+}
