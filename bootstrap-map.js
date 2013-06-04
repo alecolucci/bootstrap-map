@@ -1,4 +1,4 @@
-+function ($) { "use strict";
+( function ($) { "use strict";
 
   // MAP PUBLIC CLASS DEFINITION
   // ===============================
@@ -13,14 +13,23 @@
   // MapMarker PUBLIC CLASS DEFINITION
   // ===============================
   var MapMarker = function( element, selectors ) {
-    this.$element     = null
-    this.selectors    = {}
-    this.latitude     =
-    this.longitude    =
-    this.name         =
-    this.description  =
-    this.link         =
-    this.image        =
+    this.$element                 = null
+    this.selectors                = {}
+    this.selectors.latitude       =
+    this.selectors.longitude      =
+    this.selectors.description    =
+    this.selectors.name           =
+    this.selectors.link           =
+    this.selectors.image          =
+    this.selectors.geo            =
+    this.selectors.image          =
+    this.latitude                 =
+    this.longitude                =
+    this.name                     =
+    this.description              =
+    this.link                     =
+    this.image                    =
+    this.icon                     =
 
     this.init( element, selectors )
   }
@@ -28,7 +37,17 @@
   MapMarker.prototype.init = function( element, selectors ) {
     this.$element   = $(element)
     this.selectors  = selectors
-    
+    this.fill()
+  }
+
+  MapMarker.prototype.fill = function() {
+    this.latitude     = this.$element.find(this.selectors.latitude).attr( 'content' )
+    this.longitude    = this.$element.find(this.selectors.longitude).attr( 'content' )
+    this.name         = this.$element.find(this.selectors.name).text()
+    this.description  = this.$element.find(this.selectors.description).text()
+    this.link         = this.$element.find(this.selectors.link).attr('href')
+    this.image        = this.$element.find(this.selectors.image).attr('src')
+    this.icon         = this.$element.find(this.selectors.geo ).attr('data-icon')
   }
 
   Map.DEFAULTS = {
@@ -74,13 +93,6 @@
   Map.prototype.getOptions = function (options) {
     options = $.extend({}, this.getDefaults(), this.$element.data(), options)
 
-    if (options.delay && typeof options.delay == 'number') {
-      options.delay = {
-        show: options.delay
-      , hide: options.delay
-      }
-    }
-
     return options
   }
 
@@ -91,13 +103,35 @@
     }
   }
 
+  Map.prototype.parseHTMLMarkers = function( markers ) {
+    var that = this;
+    var result = [];
+    $.each(markers, function(){
+      var marker = new MapMarker($(this), {
+        latitude:       that.options.latitude
+        , longitude:      that.options.longitude
+        , description:    that.options.description
+        , name:           that.options.name
+        , link:           that.options.link
+        , image:          that.options.image
+        , icon:           that.options.icon
+      })
+      result.push(marker)
+    })
+    return result
+  }
+
   Map.prototype.addMarkers = function( markers ) {
-    $.each( markers, $.proxy( this.addMarker, this ) )
+    $.each( markers, $.proxy( function( index, marker ){
+      this.addMarker( marker )
+    }, this ) )
   }
 
   Map.prototype.addMarker = function( marker ) {
     this.map.gmap( 'addMarker', {
-      position: new google.maps.LatLng(position.coords.latitude, position.coords.longitude)
+      position  : new google.maps.LatLng(marker.latitude, marker.longitude)
+      , bounds    : true
+      , icon      : marker.icon
     })
   }
 
@@ -154,4 +188,4 @@
     })
   })
 
-}(window.jQuery);
+}(window.jQuery) )
