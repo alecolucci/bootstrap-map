@@ -40,7 +40,7 @@
   })()
 
   Map.DEFAULTS = {
-    template:     '<div class="info-window"><h4><a></a></h4><img/><p></p><hr></div>'
+    template:     '<div><div class="info-window"><img/><h4><a></a></h4><p></p><hr></div></div>'
     , map:            '.map'
     , marker:         '.marker'
     , latitude:       '[itemprop=latitude]'
@@ -95,7 +95,7 @@
     var markers = []
 
     if ( this.options.ajax ) {
-      switch ( this.options.ajax ) {
+      switch ( this.options.dataType ) {
         case 'html':
           markers = this.parseHTML( $( data ).find( this.options.marker ) )
           break;
