@@ -12,53 +12,59 @@
 
   // MapMarker PUBLIC CLASS DEFINITION
   // ===============================
-  var MapMarker = function( element, selectors ) {
-    this.$element                 = null
-    this.selectors                = {}
-    this.selectors.latitude       =
-    this.selectors.longitude      =
-    this.selectors.description    =
-    this.selectors.name           =
-    this.selectors.link           =
-    this.selectors.image          =
-    this.selectors.geo            =
-    this.selectors.image          =
-    this.latitude                 =
-    this.longitude                =
-    this.name                     =
-    this.description              =
-    this.link                     =
-    this.image                    =
-    this.icon                     =
+  var MapMarker = (function(){
+    function MapMarker (element, selectors) {
+      this.$element                 = null
+      this.selectors                = {}
+      this.selectors.latitude       = ''
+      this.selectors.longitude      = ''
+      this.selectors.description    = ''
+      this.selectors.name           = ''
+      this.selectors.link           = ''
+      this.selectors.image          = ''
+      this.selectors.geo            = ''
+      this.selectors.image          = ''
+      this.latitude                 = ''
+      this.longitude                = ''
+      this.name                     = ''
+      this.description              = ''
+      this.link                     = ''
+      this.image                    = ''
+      this.icon                     = ''
 
-    this.init( element, selectors )
-  }
-
-  MapMarker.prototype.init = function( element, selectors ) {
-    this.$element   = $(element)
-    this.selectors  = selectors
-    this.fill()
-  }
-
-  MapMarker.prototype.fill = function() {
-    this.latitude     = this.$element.find(this.selectors.latitude).attr( 'content' )
-    this.longitude    = this.$element.find(this.selectors.longitude).attr( 'content' )
-    this.name         = this.$element.find(this.selectors.name).text()
-    this.description  = this.$element.find(this.selectors.description).text()
-    this.link         = this.$element.find(this.selectors.link).attr('href')
-    this.image        = this.$element.find(this.selectors.image).attr('src')
-    this.icon         = this.$element.find(this.selectors.geo ).attr('data-icon')
-  }
+      this.init( element, selectors )
+    }
+    MapMarker.prototype.init = function( element, selectors ) {
+      this.$element   = $(element)
+      this.selectors  = selectors
+      this.latitude     = this.$element.find(this.selectors.latitude).attr( 'content' )
+      this.longitude    = this.$element.find(this.selectors.longitude).attr( 'content' )
+      this.name         = this.$element.find(this.selectors.name).text()
+      this.description  = this.$element.find(this.selectors.description).text()
+      this.link         = this.$element.find(this.selectors.link).attr('href')
+      this.image        = this.$element.find(this.selectors.image).attr('src')
+      this.icon         = this.$element.find(this.selectors.geo ).attr('data-icon')
+    }
+    MapMarker.prototype.populate = function( info_window ) {
+      var $content = $(info_window.content)
+      $content.find( 'h4 a' ).text( this.name)
+      $content.find( 'img' ).attr( 'src', this.image )
+      $content.find( 'p' ).text( this.description )
+      $content.find( 'a' ).attr( 'href', this.link )
+      info_window.setContent($content.html())
+    }
+    return MapMarker
+  })()
 
   Map.DEFAULTS = {
-    template:     '<div class="info-window"><h4 class="title"><a></a></h4><img/><p class="description"></p><hr></div>'
+    template:     '<div class="info-window"><h4><a></a></h4><img/><p></p><hr></div>'
     , map:            '.map'
     , marker:         '.marker'
     , latitude:       '[itemprop=latitude]'
     , longitude:      '[itemprop=longitude]'
     , description:    '[itemprop=description]'
     , name:           '[itemprop=name]'
-    , link:           '[itemprop=url]'
+    , link:           '[itemprop=url] a'
     , image:          '[itemprop=image]'
     , geo:            '[itemprop=geo]'
     , center:         'autodetect'
@@ -128,11 +134,16 @@
   }
 
   Map.prototype.addMarker = function( marker ) {
+    var that = this;
     this.map.gmap( 'addMarker', {
       position  : new google.maps.LatLng(marker.latitude, marker.longitude)
       , bounds    : true
       , icon      : marker.icon
-    })
+    } ).click(function(){
+        that.map.gmap('openInfoWindow', {
+          content: that.options.template
+        }, this, $.proxy( marker.populate, marker ) )
+      })
   }
 
   Map.prototype.parseResponse = function( data ) {
