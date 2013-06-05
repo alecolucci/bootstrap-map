@@ -50,9 +50,8 @@
     , link:           '[itemprop=url] a'
     , image:          '[itemprop=image]'
     , geo:            '[itemprop=geo]'
-    , center:         'autodetect'
-    , position:       undefined
-    , height:         '400px'
+    , center:         null    // 'geolocation' or '{lat},{lng}'
+    , height:         null
     , ajax:           false
     , url:            ''
     , dataType:       'html'
@@ -63,8 +62,21 @@
     this.type     = type
     this.$element = $(element)
     this.options  = this.getOptions(options)
-    this.map      = this.$element.gmap().bind( 'init', $.proxy( this.setup, this ))
-    this.markers  = []
+    this.map      = this.$element.gmap().bind( 'init', $.proxy( this.setup, this ));
+    this.markers  = [];
+
+    if ( 'geolocation' == this.options.center ) {
+      this.$element.one( 'addedMarkers', $.proxy(function(){
+        var that = this
+        this.getCurrentPosition( function( position, status ){
+          if ( 'OK' === status ) {
+            that.setCenter( position )
+          }
+        } )
+      }, this ))
+    } else if ( typeof this.options.center == 'string' && this.options.center.indexOf( ',' ) !== -1 ) {
+
+    }
 
     if ( this.options.ajax ) {
       var that = this
@@ -79,6 +91,7 @@
       this.parse( $( this.options.marker ) )
       this.addMarkers()
     }
+
   }
 
   Map.prototype.getDefaults = function () {
@@ -150,6 +163,7 @@
     $.each( markers, function(){
       that.addMarker( this )
     })
+    this.$element.trigger( 'addedMarkers' )
   }
 
   Map.prototype.addMarker = function( marker ) {
@@ -178,6 +192,16 @@
       );
     } else {
       callback(null, 'NOT_SUPPORTED')
+    }
+  }
+
+  Map.prototype.setCenter = function( obj ) {
+    if ( typeof obj == 'object' ) {
+      if ( obj.hasOwnProperty( 'latitude' ) && obj.hasOwnProperty( 'longitude' ) ) {
+        this.$element.gmap( 'option', 'center', new google.maps.LatLng( latitude, longitude ) )
+      } else if ( obj.hasOwnProperty( 'coords' ) ) {
+        this.$element.gmap( 'option', 'center', new google.maps.LatLng( obj.coords.latitude, obj.coords.longitude ) )
+      }
     }
   }
 
