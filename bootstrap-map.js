@@ -7,7 +7,7 @@
     this.options    =
     this.$element   = null
 
-    this.init('map', element, options)
+    this.setup('map', element, options)
   }
 
   // MapMarker PUBLIC CLASS DEFINITION
@@ -61,32 +61,33 @@
     , data:           '{}'      // data to be passed to ajax request
   }
 
-  Map.prototype.init = function (type, element, options) {
-    this.enabled    = true
-    this.type       = type
-    this.$element   = $(element)
-    this.options    = this.getOptions(options)
-    this.map        = this.$element.gmap().bind( 'init', $.proxy( this.setup, this )) /*** @type ui.gmap */
-    this.google_map = this.$element.gmap('get','map')                                 /*** @type google.maps.Map */
-    this.markers    = [];
-    this.zoom       = null
-    this.zoomHighest = null
-    this.center     = null
+  Map.prototype.setup = function (type, element, options) {
+    this.enabled      = true
+    this.type         = type
+    this.$element     = $(element)
+    this.options      = this.getOptions(options)
+    this.markers      = [];
+    this.zoom         = null
+    this.zoomHighest  = null
+    this.center       = null
 
     if ( 'geolocation' == this.options.center ) {
-      this.$element.one( 'addedMarkers', $.proxy(function(){
-        var that = this
-        this.getCurrentPosition( function( position, status ){
-          if ( 'OK' === status ) {
-            that.setCenter( that.getLatLng( position ) )
-          }
-        } )
-      }, this ))
-    } else if ( typeof this.options.center == 'string' && this.options.center.indexOf( ',' ) !== -1 ) {
-      this.$element.one( 'addedMarkers', $.proxy(function(){
-        this.setCenter( this.getLatLng( this.options.center ) )
+      this.$element.one( 'markers_added', $.proxy(function(){
+        this.center = this.getCurrentPosition(this.setCenter)
       }, this ))
     }
+
+    if ( this.options.loadMore ) {
+      google.maps.event.addListener( this.google_map, 'idle', $.proxy( Map.loadMore, this ) )
+    }
+
+    /*** @type ui.gmap */
+    this.map = this.$element.gmap({
+      center: this.getLatLng(this.options.center)
+    }).bind( 'init', $.proxy( this.init, this ) )
+
+    /*** @type google.maps.Map */
+    this.google_map   = this.$element.gmap('get','map')
   }
 
   Map.prototype.getDefaults = function () {
@@ -99,12 +100,11 @@
     return options
   }
 
-  Map.prototype.setup = function() {
+  Map.prototype.init = function() {
     if ( this.options.ajax ) {
-      this.setupAjax()
+      this.ajax({})
     } else {
-      this.parse( $( this.options.marker ) )
-      this.addMarkers()
+      this.addMarkers( $( this.options.marker ) )
     }
   }
 
@@ -115,71 +115,65 @@
    */
   Map.prototype.ajax = function(settings) {
     if ( typeof settings == 'undefiend' ) {
-      var settings = {}
+      settings = {}
     }
     var settings = $.extend(true, {
-      url:            this.options.url
-      , type:         this.options.type
-      , data:         $.parseJSON( this.options.data )
-      , dataType:     this.options.dataType
+      url:         this.options.url
+      , type:      this.options.type
+      , data:      $.parseJSON( this.options.data )
+      , dataType:  this.options.dataType
+      , success:  $.proxy( this.addMarkers, this )
     }, settings)
-    var that = this
-    $.ajax(settings).done(function(data){
-        that.parse(data)
-        that.addMarkers()
-      })
+    this.$element.trigger( 'ajax_settings', [ settings, this ] )
+    $.ajax(settings)
   }
 
-  Map.prototype.setupAjax = function(){
-    this.ajax({})
-    if ( this.options.loadMore ) {
-      var that = this
-      google.maps.event.addListener( this.google_map, 'idle', function(){
+  Map.prototype.loadMore = function(){
 
-        // skip if just loadded for the first time on 0,0
-        if ( this.getCenter().equals(that.getLatLng({latitude:0, longitude:0})) ) {
-          return
-        }
+    var map = this.google_map
 
-        if ( !that.zoom && !that.zoomHighest && !that.center && !that.range ) {
-          that.center       = this.getCenter()
-          that.zoom         = this.getZoom()
-          that.zoomHighest  = that.zoom
-          that.range        = that.getDistanceFromCenterToCorner()
-        }
-
-        if ( that.zoom < this.getZoom() ) {
-          // don't do anything
-        } else if ( that.zoom > this.getZoom() ) {
-          if ( that.zoomHighest > this.getZoom() ) {
-            that.ajax({
-              data: {
-                  latitude:   this.getCenter().lat()
-                , longitude:  this.getCenter().lng()
-                , beyond:     that.range
-                , range:      that.getDistanceFromCenterToCorner() - that.range
-              }
-            })
-            that.zoomHighest = this.getZoom()
-          }
-        } else {
-          var change = google.maps.geometry.spherical.computeDistanceBetween(that.center, this.getCenter() )
-          if ( change / that.range > 0.1 ) {
-            that.ajax({
-              data: {
-                latitude:     this.getCenter().lat()
-                , longitude:  this.getCenter().lng()
-                , range:      that.getDistanceFromCenterToCorner()
-              }
-            })
-          }
-          that.zoomHighest = this.getZoom()
-        }
-        that.zoom   = this.getZoom()
-        that.center = this.getCenter()
-        that.range  = that.getDistanceFromCenterToCorner()
-      })
+    // skip if just loadded for the first time on 0,0
+    if ( map.getCenter().equals(this.getLatLng({latitude:0, longitude:0})) ) {
+      return
     }
+
+    if ( !this.zoom || !this.zoomHighest || !this.center || !this.range ) {
+      this.center       = map.getCenter()
+      this.zoom         = map.getZoom()
+      this.zoomHighest  = this.zoom
+      this.range        = this.getDistanceFromCenterToCorner()
+    }
+
+    if ( this.zoom < map.getZoom() ) {
+      // don't do anything
+    } else if ( this.zoom > map.getZoom() ) {
+      if ( this.zoomHighest > map.getZoom() ) {
+        this.ajax({
+          data: {
+            latitude:   map.getCenter().lat()
+            , longitude:  map.getCenter().lng()
+            , beyond:     this.range
+            , range:      this.getDistanceFromCenterToCorner() - this.range
+          }
+        })
+        this.zoomHighest = map.getZoom()
+      }
+    } else {
+      var change = google.maps.geometry.spherical.computeDistanceBetween(this.center, map.getCenter() )
+      if ( change / this.range > 0.1 ) {
+        this.ajax({
+          data: {
+            latitude:     map.getCenter().lat()
+            , longitude:  map.getCenter().lng()
+            , range:      this.getDistanceFromCenterToCorner()
+          }
+        })
+      }
+      this.zoomHighest = map.getZoom()
+    }
+    this.zoom   = map.getZoom()
+    this.center = map.getCenter()
+    this.range  = this.getDistanceFromCenterToCorner()
   }
 
   Map.prototype.parse = function( data ) {
@@ -198,9 +192,11 @@
       markers = this.parseHTML( data )
     }
 
-    this.$element.trigger( 'parse', data, markers, this )
+    this.$element.trigger( 'parse', [ data, markers, this ] )
 
     this.markers = markers
+
+    return markers
   }
 
   Map.prototype.parseHTML = function( data ) {
@@ -235,13 +231,14 @@
 
   Map.prototype.addMarkers = function( markers ) {
     if ( typeof markers === 'undefined' ) {
-      var markers = this.markers
+      markers = this.markers
+    } else {
+      markers = this.parse( markers )
     }
-    var that = this
-    $.each( markers, function(){
-      that.addMarker( this )
-    })
-    this.$element.trigger( 'addedMarkers', this )
+    $.each( markers, $.proxy( function(i, value) {
+      this.addMarker( value )
+    }, this ))
+    this.$element.trigger( 'markers_added', [ this ] )
   }
 
   Map.prototype.addMarker = function( marker ) {
@@ -261,51 +258,63 @@
   }
 
   Map.prototype.getCurrentPosition = function(callback, geoPositionOptions) {
+    if ( typeof callback == 'undefined' ) {
+      callback = null
+    }
+    var that     = this;
+    var position = null;
     if ( navigator.geolocation ) {
       navigator.geolocation.getCurrentPosition (
         function(result) {
-          callback(result, 'OK')
+          position = that.getLatLng( result )
+          if ( callback )
+            ($.proxy( callback, that, position, 'OK' ))()
         },
         function(error) {
-          callback(null, error)
+          if ( callback )
+            ($.proxy( callback, that, null, error ))()
         },
         geoPositionOptions
       );
     } else {
-      callback(null, 'NOT_SUPPORTED')
+      if ( callback )
+        ($.proxy( callback, that, null, 'NOT_SUPPORTED' ))()
     }
+    return position
   }
 
   Map.prototype.getLatLng = function( obj ) {
     if ( obj instanceof google.maps.LatLng ) {
       return obj
     }
-    switch ( typeof obj ) {
-      case 'object':
-        if ( obj.hasOwnProperty( 'latitude' ) && obj.hasOwnProperty( 'longitude' ) ) {
-          return new google.maps.LatLng( obj.latitude, obj.longitude )
-        } else if ( obj.hasOwnProperty( 'coords' ) ) {
-          return new google.maps.LatLng( obj.coords.latitude, obj.coords.longitude )
-        }
-        break;
-      case 'array':
-        if ( obj.length == 2 ) {
-          return new google.maps.LatLng( obj[0], obj[1] )
-        }
-        break;
-      case 'string':
-        if ( obj.indexOf( ',' ) !== -1 ) {
-          var latLng = this.options.center.replace(/ /g,'').split(',');
-          return new google.maps.LatLng( latLng[0], latLng[1] )
-        }
-        break;
+    if ( obj ) {
+      switch ( typeof obj ) {
+        case 'object':
+          if ( obj.hasOwnProperty( 'latitude' ) && obj.hasOwnProperty( 'longitude' ) ) {
+            return new google.maps.LatLng( obj.latitude, obj.longitude )
+          } else if ( obj.hasOwnProperty( 'coords' ) ) {
+            return new google.maps.LatLng( obj.coords.latitude, obj.coords.longitude )
+          }
+          break;
+        case 'array':
+          if ( obj.length == 2 ) {
+            return new google.maps.LatLng( obj[0], obj[1] )
+          }
+          break;
+        case 'string':
+          if ( obj.indexOf( ',' ) !== -1 ) {
+            var latLng = this.options.center.replace(/ /g,'').split(',');
+            return new google.maps.LatLng( latLng[0], latLng[1] )
+          }
+          break;
+      }
     }
     return new google.maps.LatLng( 0.0, 0,0 )
   }
 
   Map.prototype.setCenter = function( latLng ) {
     this.$element.gmap( 'option', 'center', latLng )
-    this.$element.trigger( 'centered', this )
+    this.$element.trigger( 'centered', [ this ] )
   }
 
   /**
