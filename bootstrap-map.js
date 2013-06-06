@@ -77,10 +77,6 @@
       }, this ))
     }
 
-    if ( this.options.loadMore ) {
-      google.maps.event.addListener( this.google_map, 'idle', $.proxy( Map.loadMore, this ) )
-    }
-
     /*** @type ui.gmap */
     this.map = this.$element.gmap({
       center: this.getLatLng(this.options.center)
@@ -106,6 +102,10 @@
     } else {
       this.addMarkers( $( this.options.marker ) )
     }
+
+    if ( this.options.loadMore ) {
+      google.maps.event.addListener( this.google_map, 'idle', $.proxy( this.loadMore, this, this.google_map ) )
+    }
   }
 
   /**
@@ -128,9 +128,10 @@
     $.ajax(settings)
   }
 
-  Map.prototype.loadMore = function(){
+  Map.prototype.loadMore = function( map ){
 
-    var map = this.google_map
+    if ( typeof map == 'undefined' )
+      map = this.google_map
 
     // skip if just loadded for the first time on 0,0
     if ( map.getCenter().equals(this.getLatLng({latitude:0, longitude:0})) ) {
@@ -150,7 +151,7 @@
       if ( this.zoomHighest > map.getZoom() ) {
         this.ajax({
           data: {
-            latitude:   map.getCenter().lat()
+            latitude:     map.getCenter().lat()
             , longitude:  map.getCenter().lng()
             , beyond:     this.range
             , range:      this.getDistanceFromCenterToCorner() - this.range
@@ -314,7 +315,7 @@
 
   Map.prototype.setCenter = function( latLng ) {
     this.$element.gmap( 'option', 'center', latLng )
-    this.$element.trigger( 'centered', [ this ] )
+    this.$element.trigger( 'center_changed', [ this ] )
   }
 
   /**
