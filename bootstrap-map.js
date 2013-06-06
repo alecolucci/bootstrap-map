@@ -358,19 +358,19 @@
    * @returns function|Map|array
    */
   $.fn.map = function (option) {
-    if ( typeof $(this).data('bs.map') == 'undefined' ) {
+    if ( typeof $(this).data('hc.map') == 'undefined' ) {
       return this.each(function () {
         var $this   = $(this)
-        var data    = $this.data('bs.map')
+        var data    = $this.data('hc.map')
         var options = typeof option == 'object' && option
 
-        if (!data) $this.data('bs.map', (data = new Map(this, options)))
+        if (!data) $this.data('hc.map', (data = new Map(this, options)))
         if (typeof option == 'string') data[option]()
       })
     } else {
       var maps = []
       this.each(function(){
-        maps.push($(this).data('bs.map'))
+        maps.push($(this).data('hc.map'))
       })
       return maps
     }
