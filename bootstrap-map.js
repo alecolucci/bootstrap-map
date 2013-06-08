@@ -15,13 +15,14 @@
   var MapMarker = (function(){
     function MapMarker (obj) {
       this.$element    = null
-      this.latitude    = ''
-      this.longitude   = ''
-      this.name        = ''
-      this.description = ''
-      this.link        = ''
-      this.image       = ''
-      this.icon        = ''
+      this.id          = null
+      this.latitude    = null
+      this.longitude   = null
+      this.name        = null
+      this.description = null
+      this.link        = null
+      this.image       = null
+      this.icon        = null
       for ( var prop in obj ) {
         if ( obj.hasOwnProperty( prop ) ) {
           this[prop] = obj[prop];
@@ -43,6 +44,7 @@
     template:     '<div><div class="info-window"><img/><h4><a></a></h4><p></p><hr></div></div>'
     , map:            '.map'
     , marker:         '.marker'
+    , id:             ''
     , latitude:       '[itemprop=latitude]'
     , longitude:      '[itemprop=longitude]'
     , description:    '[itemprop=description]'
@@ -58,7 +60,8 @@
     , bounds:         true
     , loadMore:       false   // Do you want an AJAX request to be made when the map is zoomed or the center is changed?
     , type:           'post'  // request type
-    , data:           '{}'      // data to be passed to ajax request
+    , data:           []      // data to be passed to ajax request
+    , zoom:           5
   }
 
   Map.prototype.setup = function (type, element, options) {
@@ -66,20 +69,15 @@
     this.type         = type
     this.$element     = $(element)
     this.options      = this.getOptions(options)
-    this.markers      = [];
+    this.markers      = {}
     this.zoom         = null
     this.zoomHighest  = null
     this.center       = null
 
-    if ( 'geolocation' == this.options.center ) {
-      this.$element.one( 'markers_added', $.proxy(function(){
-        this.center = this.getCurrentPosition(this.setCenter)
-      }, this ))
-    }
-
     /*** @type ui.gmap */
     this.map = this.$element.gmap({
       center: this.getLatLng(this.options.center)
+      , zoom: this.options.zoom
     }).bind( 'init', $.proxy( this.init, this ) )
 
     /*** @type google.maps.Map */
@@ -98,8 +96,27 @@
 
   Map.prototype.init = function() {
     if ( this.options.ajax ) {
-      this.ajax({})
+      if ( 'geolocation' == this.options.center ) {
+        this.getCurrentPosition(function(latLng){
+          if ( latLng )
+            this.setCenter(latLng)
+          this.ajax({
+            data: {
+              latitude: latLng.lat()
+              , longitude: latLng.lng()
+              , range: this.getDistanceFromCenterToCorner()
+            }
+          })
+        })
+      } else {
+        this.ajax({})
+      }
     } else {
+      if ( 'geolocation' == this.options.center ) {
+        this.$element.one( 'markers_added', $.proxy(function(){
+          this.center = this.getCurrentPosition(this.setCenter)
+        }, this ))
+      }
       this.addMarkers( $( this.options.marker ) )
     }
 
@@ -117,10 +134,10 @@
     if ( typeof settings == 'undefiend' ) {
       settings = {}
     }
-    var settings = $.extend(true, {
+    settings = $.extend(true, {
       url:         this.options.url
       , type:      this.options.type
-      , data:      $.parseJSON( this.options.data )
+      , data:      this.options.data
       , dataType:  this.options.dataType
       , success:  $.proxy( this.addMarkers, this )
     }, settings)
@@ -145,41 +162,38 @@
       this.range        = this.getDistanceFromCenterToCorner()
     }
 
+    var request = {
+      data: {
+          latitude:   map.getCenter().lat()
+        , longitude:  map.getCenter().lng()
+        , range:      this.getDistanceFromCenterToCorner()
+        , exclude:    Object.keys( this.markers )
+      }
+    }
+
     if ( this.zoom < map.getZoom() ) {
-      // don't do anything
+      // Zoomed in - don't do anything
     } else if ( this.zoom > map.getZoom() ) {
+      // Zoomed out
       if ( this.zoomHighest > map.getZoom() ) {
-        this.ajax({
-          data: {
-            latitude:     map.getCenter().lat()
-            , longitude:  map.getCenter().lng()
-            , beyond:     this.range
-            , range:      this.getDistanceFromCenterToCorner() - this.range
-          }
-        })
-        this.zoomHighest = map.getZoom()
+        request.data.beyond = this.range
+        this.ajax(request)
+        this.zoomHighest  = map.getZoom()
+        this.range        = this.getDistanceFromCenterToCorner()
       }
     } else {
       var change = google.maps.geometry.spherical.computeDistanceBetween(this.center, map.getCenter() )
-      if ( change / this.range > 0.1 ) {
-        this.ajax({
-          data: {
-            latitude:     map.getCenter().lat()
-            , longitude:  map.getCenter().lng()
-            , range:      this.getDistanceFromCenterToCorner()
-          }
-        })
+      if ( change / this.range > 0.2 ) {
+        this.ajax(request)
+        this.zoomHighest = map.getZoom()
       }
-      this.zoomHighest = map.getZoom()
     }
     this.zoom   = map.getZoom()
     this.center = map.getCenter()
-    this.range  = this.getDistanceFromCenterToCorner()
   }
 
   Map.prototype.parse = function( data ) {
-    var markers = []
-
+    var markers = {}
     if ( this.options.ajax ) {
       switch ( this.options.dataType ) {
         case 'html':
@@ -192,11 +206,7 @@
     } else {
       markers = this.parseHTML( data )
     }
-
     this.$element.trigger( 'parse', [ data, markers, this ] )
-
-    this.markers = markers
-
     return markers
   }
 
@@ -206,7 +216,8 @@
     $.each(data, function(){
       var $this = $(this)
       var marker = new MapMarker({
-        $element:         $this
+          $element:       $this
+        , id:             $this.attr('id')
         , latitude:       $this.find(that.options.latitude).attr( 'content' )
         , longitude:      $this.find(that.options.longitude).attr( 'content' )
         , name:           $this.find(that.options.name).text()
@@ -217,7 +228,7 @@
       })
       result.push(marker)
     })
-    return result
+    return $.extend({}, result)
   }
 
   Map.prototype.parseJSON = function( data ) {
@@ -227,24 +238,26 @@
       var marker = new MapMarker(this)
       result.push(marker)
     })
-    return result
+    return $.extend({}, result)
   }
 
   Map.prototype.addMarkers = function( markers ) {
-    if ( typeof markers === 'undefined' ) {
-      markers = this.markers
-    } else {
+    if ( typeof markers !== 'undefined' ) {
       markers = this.parse( markers )
     }
-    $.each( markers, $.proxy( function(i, value) {
-      this.addMarker( value )
-    }, this ))
+    $.each( markers, $.proxy( function(i, marker) {
+      if ( marker.hasOwnProperty('id') && !this.markers.hasOwnProperty( marker.id ) ) {
+        this.markers[ marker.id ] = this.addMarker( marker )
+      } else {
+        this.markers[Object.keys(this.markers ).length + 1 ] = this.addMarker( marker )
+      }
+    }, this ) )
     this.$element.trigger( 'markers_added', [ this ] )
   }
 
   Map.prototype.addMarker = function( marker ) {
     var that = this;
-    this.map.gmap( 'addMarker', {
+    return this.map.gmap( 'addMarker', {
       position    : this.getLatLng({
           latitude: marker.latitude
         , longitude: marker.longitude
