@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bootstrap Map Examples</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="css/main.css" rel="stylesheet" media="screen">
+</head>
+<body>
+<div class="container">
+    <header class="row">
+        <div class="span12">
+            <h1>Bootstrap Map Examples</h1>
+        </div>
+    </header>
+    <div class="navbar">
+        <div class="navbar-inner">
+            <ul class="nav">
+                <li><a href="#from-markup">Schema.org markup</a></li>
+                <li><a href="#via-ajax-json">from JSON</a></li>
+                <li><a href="#via-ajax-html">from remote HTML</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="row" id="from-markup">
+        <div class="span8">
+            <h2>Map from Markup</h2>
+            <div id="venues" class="map"></div>
+        </div>
+        <div class="span4">
+            <h3>Markup
+                <small><a href="http://schema.org/BarOrPub">( schema.org )</a></small>
+            </h3>
+            <div class="marker" itemscope itemtype="http://schema.org/BarOrPub">
+                <h4 itemprop="name">Horseshoe Tavern</h4>
+
+                <div>Email: <span itemprop="email"><a
+                        href='mailto:info@horseshoetavern.com'>info@horseshoetavern.com</a></span>
+                </div>
+                <div>Phone: <span itemprop="telephone">416-598-4753</span></div>
+                <div>Url: <span itemprop="url"><a
+                        href='http://www.horseshoetavern.com/'>http://www.horseshoetavern.com/</a></span>
+                </div>
+
+                <div itemprop="paymentAccepted" style='display: none'>cash, credit card</div>
+                <meta itemprop="openingHours" style='display: none' datetime="Mo,Tu,We,Th,Fr,Sa,Su 00:00-02:30"/>
+                <div itemtype="http://schema.org/GeoCoordinates" itemscope="" itemprop="geo">
+                    <meta itemprop="latitude" content="43.648991"/>
+                    <meta itemprop="longitude" content="-79.395989"/>
+
+                </div>
+                <div itemtype="http://schema.org/PostalAddress" itemscope="" itemprop="address">
+                    <div itemprop="streetAddress">370 Queen St W</div>
+                    <div><span itemprop="addressLocality">Toronto</span>, <span itemprop="addressRegion">ON</span>
+                        <span itemprop="postalCode">M5V 2A2</span></div>
+                </div>
+            </div>
+            <div class="marker" itemscope="" itemtype="http://schema.org/BarOrPub">
+                <h4 itemprop="name">The Rivoli</h4>
+
+                <div>Email: <span itemprop="email"><a href="mailto:mail@rivoli.ca">mail@rivoli.ca</a></span></div>
+                <div>Phone: <span itemprop="telephone">416-596-1908</span></div>
+                <div>Url: <span itemprop="url"><a href="http://www.rivoli.ca/">http://www.rivoli.ca/</a></span></div>
+
+                <div itemprop="paymentAccepted" style="display: none">cash, credit card</div>
+                <meta itemprop="openingHours" style="display: none" datetime="Mo,Tu,We,Th,Fr,Sa,Su 11:00-01:00">
+                <div itemtype="http://schema.org/GeoCoordinates" itemscope="" itemprop="geo">
+                    <meta itemprop="latitude" content="43.649245">
+                    <meta itemprop="longitude" content="-79.394852">
+
+                </div>
+                <div itemtype="http://schema.org/PostalAddress" itemscope="" itemprop="address">
+                    <div itemprop="streetAddress">334 Queen St W</div>
+                    <div><span itemprop="addressLocality">Toronto</span>, <span itemprop="addressRegion">ON</span> <span
+                            itemprop="postalCode">M5V 2A4</span></div>
+                </div>
+            </div>
+            <div class="marker" itemscope itemtype="http://schema.org/BarOrPub">
+                <h4 itemprop="name">The Garrison</h4>
+
+                <div>Email: <span itemprop="email"><a href='mailto:booking@garrisontoronto.com'>booking@garrisontoronto.com</a></span>
+                </div>
+                <div>Phone: <span itemprop="telephone">416-519-9439</span></div>
+                <div>Url: <span itemprop="url"><a
+                        href='http://www.garrisontoronto.com/'>http://www.garrisontoronto.com/</a></span></div>
+
+                <div itemprop="paymentAccepted" style='display: none'>cash, credit card</div>
+                <div itemtype="http://schema.org/GeoCoordinates" itemscope="" itemprop="geo">
+                    <meta itemprop="latitude" content="43.649273"/>
+                    <meta itemprop="longitude" content="-79.422303"/>
+
+                </div>
+                <div itemtype="http://schema.org/PostalAddress" itemscope="" itemprop="address">
+                    <div itemprop="streetAddress">1197 Dundas St W</div>
+                    <div><span itemprop="addressLocality">Toronto</span>, <span itemprop="addressRegion">ON</span> <span
+                            itemprop="postalCode">M6J 1X3</span></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div class="row">
+        <div class="span12">
+            <script src="https://gist.github.com/taras/5709143.js"></script>
+        </div>
+    </div>
+    <div class="row" id="via-ajax-json">
+        <div class="span12">
+            <h2>From JSON
+                <small>with AJAX</small>
+            </h2>
+            <div class="map" data-ajax='true' data-data-type='json' data-url='demo.json'></div>
+            <script src="https://gist.github.com/taras/5709268.js"></script>
+        </div>
+    </div>
+    <div class="row" id="via-ajax-html">
+        <div class="span12">
+            <h2>From External HTML
+                <small>with AJAX</small>
+            </h2>
+            <div class="map"
+                 data-ajax="true" data-data-type="html" data-url="demo.html"
+                 data-marker=".post" data-name=".post-title a" data-description=".entry-content"
+                 data-link=".post-title a" data-image=".thumbnail img"
+            ></div>
+            <script src="https://gist.github.com/taras/5709106.js"></script>
+        </div>
+    </div>
+    <div class="row" id="geolocation">
+        <h2>Center on Geolocation</h2>
+        <div class="map" data-center="geolocation"></div>
+        <script src="https://gist.github.com/taras/5710701.js"></script>
+    </div>
+    <div class="row" id="center">
+        <h2>Center on Coordinates</h2>
+        <div class="map" data-center="-33.87308,151.207001" data-bounds="false"></div>
+        <script src="https://gist.github.com/taras/5710938.js"></script>
+    </div>
+</div>
+
+<script src="http://maps.google.com/maps/api/js?sensor=true&libraries=geometry"></script>
+<script src="http://code.jquery.com/jquery.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="../jquery.ui.map.js"></script>
+<script src="../bootstrap-map.js"></script>
+</body>
+</html>

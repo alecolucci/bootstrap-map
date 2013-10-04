@@ -1,0 +1,48 @@
+h1 {
+    text-align: center;
+    margin: 40px auto 10px auto;
+}
+
+.navbar {
+    margin-bottom: 40px;
+}
+
+.row {
+    margin-bottom: 20px;
+}
+
+.map {
+    height: 400px;
+}
+
+/* this fixes problem with zoom bar and images in the maps*/
+.map label {
+    width: auto;
+    display: inline;
+}
+
+.map img {
+    max-width: none;
+}
+
+/* Better styles for embedding GitHub Gists */
+.gist {
+    margin-top: 20px;
+}
+.gist .gist-data {
+    max-height: 400px;
+    overflow-y: auto;
+}
+.gist tr {
+    font-size: 12px;
+}
+
+.info-window img {
+    max-width: 120px;
+    max-height: 90px;
+    float: right;
+}
+
+.info-window hr {
+    clear: both;
+}
